@@ -1,5 +1,5 @@
 {
-  description = "ahbk";
+  description = "build svelte with nginx";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -10,17 +10,51 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
   in {
-    packages.${system}.default = pkgs.stdenv.mkDerivation {
-      name = "ahbk";
-      src = self;
-      installPhase = ''
-        mkdir $out
-        mkdir $out/bin
-        cp -R ./public $out/
-        cp ./ahbk $out/bin/
-        '';
+    packages.${system} = rec {
 
-      nativeBuildInputs = [ pkgs.nodejs_20 ];
+      default = pkgs.stdenv.mkDerivation {
+        name = "ahbk";
+        src = self;
+        buildInputs = [
+          ahbk-web
+        ];
+        installPhase =
+          let
+            bin = ''
+              #!/usr/bin/env bash
+              ${pkgs.nodejs_18}/bin/node ${ahbk-web}/build
+            '';
+          in ''
+            mkdir -p $out/bin
+            echo '${bin}' > $out/bin/ahbk
+            chmod +x $out/bin/ahbk
+          '';
+      };
+
+      ahbk-web = pkgs.yarn2nix-moretea.mkYarnPackage rec {
+        name = "ahbk-web";
+        src = "${self}/web";
+        offlineCache = pkgs.fetchYarnDeps {
+          yarnLock = src + "/yarn.lock";
+          hash = "sha256-Aktm+nQOoj0bLjjNsm182u3R0bJQLQzVidDh3794evs=";
+        };
+        distPhase = "true";
+        configurePhase = ''
+          ln -s $node_modules node_modules
+        '';
+        buildPhase = ''
+          export HOME=$(mktemp -d)
+          yarn --offline build
+        '';
+        installPhase = ''
+          cp -r . $out
+          '';
+
+        nativeBuildInputs = [
+          pkgs.nodejs_18
+          pkgs.yarn
+        ];
+      };
     };
 
     nixosModules.default = { config, lib, ... }:
@@ -43,12 +77,36 @@
           virtualHosts."ahbk.ddns.net" = {
             addSSL = true;
             enableACME = true;
-            root = "${self.packages.${system}.default.out}/public";
+            locations = {
+              "/" = {
+                recommendedProxySettings = true;
+                proxyPass = "http://localhost:3000";
+              };
+              "/public" = {
+                root = "/var/www/ahbk.ddns.net";
+              };
+              "/static" = {
+                root = "${self.packages.${system}.ahbk-web}";
+              };
+            };
           };
         };
         security.acme = {
           acceptTerms = true;
           defaults.email = "alxhbk@proton.me";
+        };
+        systemd.services.ahbk-web = {
+          enable = true;
+          description = "manage ahbk-web";
+          unitConfig = {
+            Type = "simple";
+            After = [ "network-online.target" ];
+            Requires = [ "network-online.target" ];
+          };
+          serviceConfig = {
+            ExecStart = "${pkgs.nodejs_18}/bin/node ${self.packages.${system}.ahbk-web}/build";
+          };
+          wantedBy = [ "multi-user.target" ];
         };
       };
     };
