@@ -15,8 +15,12 @@
       src = self;
       installPhase = ''
         mkdir $out
+        mkdir $out/bin
         cp -R ./public $out/
+        cp ./ahbk $out/bin/
         '';
+
+      nativeBuildInputs = [ pkgs.nodejs_20 ];
     };
 
     nixosModules.default = { config, lib, ... }:
