@@ -72,6 +72,12 @@
         environment = {
           systemPackages = [ self.packages.${system}.default ];
         };
+
+        users.users."ahbk-web" = {
+          isSystemUser = true;
+          group = "ahbk-web";
+        };
+
         services.nginx = {
           enable = true;
           virtualHosts."ahbk.ddns.net" = {
@@ -105,6 +111,8 @@
           };
           serviceConfig = {
             ExecStart = "${pkgs.nodejs_18}/bin/node ${self.packages.${system}.ahbk-web}/build";
+            User = "ahbk-web";
+            Group = "ahbk-web";
           };
           wantedBy = [ "multi-user.target" ];
         };
