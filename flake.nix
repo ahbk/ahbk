@@ -1,5 +1,5 @@
 {
-  description = "build svelte with nginx";
+  description = "build nginx with proxies for svelte and uvicorn";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -19,24 +19,15 @@
   in {
     packages.${system} = rec {
 
-      default = pkgs.stdenv.mkDerivation {
-        name = "ahbk";
-        src = self;
-        buildInputs = [
-          ahbk-web
-          ahbk-api
-        ];
-        installPhase =
-          let
-            bin = ''
-              #!/usr/bin/env bash
-              ${pkgs.nodejs_18}/bin/node ${ahbk-web}/build
-            '';
-          in ''
-            mkdir -p $out/bin
-            echo '${bin}' > $out/bin/ahbk
-            chmod +x $out/bin/ahbk
-          '';
+      default = ahbk-bin;
+
+      ahbk-bin = pkgs.substituteAll {
+        src = "${self}/bin/ahbk";
+        dir = "bin";
+        isExecutable = true;
+        nodejs_18=pkgs.nodejs_18;
+        ahbk_web=ahbk-web;
+        ahbk_api=ahbk-api;
       };
 
       ahbk-api = let
@@ -44,7 +35,6 @@
           projectDir = "${self}/api";
         };
       in app.dependencyEnv;
-
 
       ahbk-web = pkgs.yarn2nix-moretea.mkYarnPackage rec {
         name = "ahbk-web";
@@ -77,12 +67,14 @@
       inherit (lib) mkOption types mkIf;
       cfg = config.ahbk;
     in {
+
       options.ahbk = {
         enable = mkOption {
           type = types.bool;
           default = false;
         };
       };
+
       config = mkIf cfg.enable {
         environment = {
           systemPackages = [ self.packages.${system}.default ];
@@ -135,11 +127,6 @@
         systemd.services.ahbk-web = {
           enable = true;
           description = "manage ahbk-web";
-          unitConfig = {
-            Type = "simple";
-            After = [ "network-online.target" ];
-            Requires = [ "network-online.target" ];
-          };
           serviceConfig = {
             ExecStart = "${pkgs.nodejs_18}/bin/node ${self.packages.${system}.ahbk-web}/build";
             User = "ahbk-web";
@@ -151,11 +138,6 @@
         systemd.services.ahbk-api = {
           enable = true;
           description = "manage ahbk-api";
-          unitConfig = {
-            Type = "simple";
-            After = [ "network-online.target" ];
-            Requires = [ "network-online.target" ];
-          };
           serviceConfig = {
             ExecStart = "${self.packages.${system}.ahbk-api}/bin/uvicorn ahbk_api.main:app";
             User = "ahbk-api";
