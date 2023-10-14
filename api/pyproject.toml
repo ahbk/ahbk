@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "ahbk-api"
+version = "0.1.0"
+description = "ahbk api"
+authors = ["Alexander Holmbäck <alexander.holmback@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+uvicorn = { version = "^0.23", extras = ["standard"] }
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

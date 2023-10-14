@@ -3,12 +3,19 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
+
+    poetry2nix = {
+      url = "github:ahbk/poetry2nix";
+      inputs.nixpkgs.follows = "nixpkgs-stable";
+    };
   };
 
-  outputs = { self, nixpkgs }: 
+  outputs = { self, nixpkgs, poetry2nix, ... }: 
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
+    inherit (poetry2nix.legacyPackages.${system}) mkPoetryApplication;
   in {
     packages.${system} = rec {
 
@@ -17,6 +24,7 @@
         src = self;
         buildInputs = [
           ahbk-web
+          ahbk-api
         ];
         installPhase =
           let
@@ -30,6 +38,13 @@
             chmod +x $out/bin/ahbk
           '';
       };
+
+      ahbk-api = let
+        app = mkPoetryApplication {
+          projectDir = "${self}/api";
+        };
+      in app.dependencyEnv;
+
 
       ahbk-web = pkgs.yarn2nix-moretea.mkYarnPackage rec {
         name = "ahbk-web";
@@ -73,11 +88,6 @@
           systemPackages = [ self.packages.${system}.default ];
         };
 
-        users.users."ahbk-web" = {
-          isSystemUser = true;
-          group = "ahbk-web";
-        };
-
         services.nginx = {
           enable = true;
           virtualHosts."ahbk.ddns.net" = {
@@ -87,6 +97,10 @@
               "/" = {
                 recommendedProxySettings = true;
                 proxyPass = "http://localhost:3000";
+              };
+              "/api" = {
+                recommendedProxySettings = true;
+                proxyPass = "http://localhost:8000";
               };
               "/public" = {
                 root = "/var/www/ahbk.ddns.net";
@@ -101,6 +115,23 @@
           acceptTerms = true;
           defaults.email = "alxhbk@proton.me";
         };
+
+        users = rec {
+          users."ahbk-web" = {
+            isSystemUser = true;
+            group = "ahbk-web";
+            uid = 993;
+          };
+          groups."ahbk-web".gid = users."ahbk-web".uid;
+
+          users."ahbk-api" = {
+            isSystemUser = true;
+            group = "ahbk-api";
+            uid = 994;
+          };
+          groups."ahbk-api".gid = users."ahbk-api".uid;
+        };
+
         systemd.services.ahbk-web = {
           enable = true;
           description = "manage ahbk-web";
@@ -113,6 +144,22 @@
             ExecStart = "${pkgs.nodejs_18}/bin/node ${self.packages.${system}.ahbk-web}/build";
             User = "ahbk-web";
             Group = "ahbk-web";
+          };
+          wantedBy = [ "multi-user.target" ];
+        };
+
+        systemd.services.ahbk-api = {
+          enable = true;
+          description = "manage ahbk-api";
+          unitConfig = {
+            Type = "simple";
+            After = [ "network-online.target" ];
+            Requires = [ "network-online.target" ];
+          };
+          serviceConfig = {
+            ExecStart = "${self.packages.${system}.ahbk-api}/bin/uvicorn ahbk_api.main:app";
+            User = "ahbk-api";
+            Group = "ahbk-api";
           };
           wantedBy = [ "multi-user.target" ];
         };
