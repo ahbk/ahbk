@@ -28,11 +28,22 @@
         nodejs_18=pkgs.nodejs_18;
         ahbk_web=ahbk-web;
         ahbk_api=ahbk-api;
+        ahbk_env=ahbk-env;
+      };
+
+      ahbk-env = pkgs.substituteAll {
+        src = "${self}/env/.env";
+        secret_key = "732ac51775b8761c1a1c553a737ce297352496a5f1f56e96";
+        db_uri="postgresql-asyncpg://ahbk:secret@localhost:5432/ahbk";
+        loglevel=0;
       };
 
       ahbk-api = let
         app = mkPoetryApplication {
           projectDir = "${self}/api";
+          postInstall = ''
+            echo 'asdf > $out/asdf
+            '';
         };
       in app.dependencyEnv;
 
