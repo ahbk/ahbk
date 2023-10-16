@@ -19,7 +19,7 @@ alembic = "^1.12.0"
 
 [tool.poetry.scripts]
 dev = 'ahbk_api.main:run'
-migrate = 'db.migrate:run'
+setup = 'db.setup:run'
 
 [tool.poetry.group.dev.dependencies]
 

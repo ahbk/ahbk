@@ -5,6 +5,7 @@ class Settings():
     db_uri: str = str(getenv('db_uri'))
     log_level: str = str(getenv('log_level'))
     env: str = str(getenv('env'))
+    api_home: str = str(getenv('api_home'))
 
 
 try:

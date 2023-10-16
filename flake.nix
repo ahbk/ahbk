@@ -36,11 +36,16 @@
         secret_key = "732ac51775b8761c1a1c553a737ce297352496a5f1f56e96";
         db_uri="postgresql+asyncpg://ahbk-api@/ahbk";
         log_level="warning";
+        env="prod";
+        api_home="${ahbk-api}/";
       };
 
       ahbk-api = let
         app = mkPoetryApplication {
           projectDir = "${self}/api";
+          postInstall = ''
+            cp -r ./alembic* $out/
+          '';
         };
       in app.dependencyEnv;
 

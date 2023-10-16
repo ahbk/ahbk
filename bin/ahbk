@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ $# -ne 1 ]; then
-    echo "Usage: $0 [web|api|migrate]"
+    echo "Usage: $0 [web|api|setup]"
     exit 1
 fi
 
@@ -11,10 +11,10 @@ if [ "$1" = "web" ]; then
 elif [ "$1" = "api" ]; then
     echo "Starting ahbk-api..."
     source @ahbk_env@ && @ahbk_api@/bin/uvicorn ahbk_api.main:app
-elif [ "$1" = "migrate" ]; then
+elif [ "$1" = "setup" ]; then
     echo "Migrating database..."
-    source @ahbk_env@ && @ahbk_api@/bin/alembic upgrade head
+    source @ahbk_env@ && @ahbk_api@/bin/setup
 else
-    echo "Invalid argument. Use 'web', 'api' or 'migrate'."
+    echo "Invalid argument. Use 'web', 'api' or 'setup'."
     exit 1
 fi
