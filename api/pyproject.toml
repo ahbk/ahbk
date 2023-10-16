@@ -4,11 +4,27 @@ version = "0.1.0"
 description = "ahbk api"
 authors = ["Alexander Holmbäck <alexander.holmback@gmail.com>"]
 readme = "README.md"
+packages = [
+    { include = "ahbk_api" },
+    { include = "auth" },
+    { include = "db" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 uvicorn = { version = "^0.23", extras = ["standard"] }
+sqlalchemy = { version = "^2.0.22", extras = ["asyncio" ] }
+asyncpg = "^0.28.0"
+alembic = "^1.12.0"
 
+[tool.poetry.scripts]
+dev = 'ahbk_api.main:run'
+setup = 'db.setup:run'
+
+[tool.poetry.group.dev.dependencies]
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4"
 
 [build-system]
 requires = ["poetry-core"]
