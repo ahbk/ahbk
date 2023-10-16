@@ -34,16 +34,13 @@
       ahbk-env = pkgs.substituteAll {
         src = "${self}/env/.env";
         secret_key = "732ac51775b8761c1a1c553a737ce297352496a5f1f56e96";
-        db_uri="postgresql-asyncpg://ahbk:secret@localhost:5432/ahbk";
+        db_uri="postgresql+asyncpg://ahbk-api@/ahbk";
         log_level="warning";
       };
 
       ahbk-api = let
         app = mkPoetryApplication {
           projectDir = "${self}/api";
-          postInstall = ''
-            source ${ahbk-env} && $out/bin/migrate
-          '';
         };
       in app.dependencyEnv;
 
@@ -76,6 +73,7 @@
     nixosModules.default = { config, lib, ... }:
     let
       inherit (lib) mkOption types mkIf;
+      inherit (self.packages.${system}) ahbk-bin ahbk-web ahbk-env ahbk-api;
       cfg = config.ahbk;
     in {
 
@@ -88,7 +86,7 @@
 
       config = mkIf cfg.enable {
         environment = {
-          systemPackages = [ self.packages.${system}.default ];
+          systemPackages = [ ahbk-bin ];
         };
 
         services.nginx = {
@@ -109,7 +107,7 @@
                 root = "/var/www/ahbk.ddns.net";
               };
               "/static" = {
-                root = "${self.packages.${system}.ahbk-web}";
+                root = "${ahbk-web}";
               };
             };
           };
@@ -137,21 +135,32 @@
         };
 
         systemd.services.ahbk-web = {
-          enable = true;
           description = "manage ahbk-web";
           serviceConfig = {
-            ExecStart = "${pkgs.nodejs_18}/bin/node ${self.packages.${system}.ahbk-web}/build";
+            ExecStart = "source ${ahbk-env} && ${pkgs.nodejs_18}/bin/node ${ahbk-web}/build";
             User = "ahbk-web";
             Group = "ahbk-web";
           };
           wantedBy = [ "multi-user.target" ];
         };
 
+        systemd.services.ahbk-migrations = {
+          description = "migrate ahbk-db";
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "source ${ahbk-env} && ${ahbk-api}/bin/migrate";
+            User = "ahbk-web";
+            Group = "ahbk-web";
+          };
+          wantedBy = [ "multi-user.target" ];
+          requires = [ "ahbk-api" ];
+          before = [ "ahbk-api" ];
+        };
+
         systemd.services.ahbk-api = {
-          enable = true;
           description = "manage ahbk-api";
           serviceConfig = {
-            ExecStart = "${self.packages.${system}.ahbk-api}/bin/uvicorn ahbk_api.main:app";
+            ExecStart = "source ${ahbk-env} && ${ahbk-api}/bin/uvicorn ahbk_api.main:app";
             User = "ahbk-api";
             Group = "ahbk-api";
           };

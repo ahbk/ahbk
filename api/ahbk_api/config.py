@@ -8,9 +8,10 @@ class Settings():
 
 
 try:
+    if getenv('log_level') == None:
+        raise TypeError
     settings = Settings()
     print(f"Log level: {settings.log_level}")
 except TypeError:
-    print('yo, source .env')
     import sys
-    sys.exit(0)
+    sys.exit('yo, source .env')
