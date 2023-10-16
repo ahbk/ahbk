@@ -5,13 +5,18 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-23.05";
 
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     poetry2nix = {
       url = "github:ahbk/poetry2nix";
       inputs.nixpkgs.follows = "nixpkgs-stable";
     };
   };
 
-  outputs = { self, nixpkgs, poetry2nix, ... }: 
+  outputs = { self, nixpkgs, poetry2nix, agenix, ... }: 
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -32,8 +37,8 @@
       };
 
       ahbk-env = pkgs.substituteAll {
+        secret_key = "tba";
         src = "${self}/env/.env";
-        secret_key = "732ac51775b8761c1a1c553a737ce297352496a5f1f56e96";
         db_uri="postgresql+asyncpg://ahbk-api@/ahbk";
         log_level="warning";
         env="prod";
@@ -77,9 +82,10 @@
 
     nixosModules.default = { config, lib, ... }:
     let
+      cfg = config.ahbk;
       inherit (lib) mkOption types mkIf;
       inherit (self.packages.${system}) ahbk-bin ahbk-web ahbk-env ahbk-api;
-      cfg = config.ahbk;
+      ahbk-prod-env = ahbk-env.overrideAttrs{ secret_key = config.age.secrets."ahbk_secret_key".path; }; 
     in {
 
       options.ahbk = {
@@ -90,6 +96,12 @@
       };
 
       config = mkIf cfg.enable {
+        age.secrets."ahbk_secret_key" = {
+          file = ./secrets/ahbk_secret_key.age;
+          owner = "ahbk-api";
+          group = "ahbk-api";
+        };
+
         environment = {
           systemPackages = [ ahbk-bin ];
         };
@@ -158,7 +170,7 @@
             ExecStart = "${pkgs.nodejs_18}/bin/node ${ahbk-web}/build";
             User = "ahbk-web";
             Group = "ahbk-web";
-            EnvironmentFile="${ahbk-env}";
+            EnvironmentFile="${ahbk-prod-env}";
           };
           wantedBy = [ "multi-user.target" ];
         };
@@ -170,7 +182,7 @@
             ExecStart = "${ahbk-api}/bin/setup";
             User = "ahbk-api";
             Group = "ahbk-api";
-            EnvironmentFile="${ahbk-env}";
+            EnvironmentFile="${ahbk-prod-env}";
           };
           wantedBy = [ "multi-user.target" ];
           before = [ "ahbk-api.service" ];
@@ -182,7 +194,7 @@
             ExecStart = "${ahbk-api}/bin/uvicorn ahbk_api.main:app";
             User = "ahbk-api";
             Group = "ahbk-api";
-            EnvironmentFile="${ahbk-env}";
+            EnvironmentFile="${ahbk-prod-env}";
           };
           wantedBy = [ "multi-user.target" ];
         };

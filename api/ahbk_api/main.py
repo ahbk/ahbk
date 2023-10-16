@@ -13,7 +13,6 @@ async def get_greeting():
 async def app(scope, receive, send):
     assert scope['type'] == 'http'
     greeting = await get_greeting()
-    print('asdf')
 
     await send({
         'type': 'http.response.start',
