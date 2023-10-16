@@ -35,15 +35,15 @@
         src = "${self}/env/.env";
         secret_key = "732ac51775b8761c1a1c553a737ce297352496a5f1f56e96";
         db_uri="postgresql-asyncpg://ahbk:secret@localhost:5432/ahbk";
-        loglevel=0;
+        log_level="warning";
       };
 
       ahbk-api = let
         app = mkPoetryApplication {
           projectDir = "${self}/api";
           postInstall = ''
-            echo 'asdf > $out/asdf
-            '';
+            source ${ahbk-env} && $out/bin/migrate
+          '';
         };
       in app.dependencyEnv;
 
