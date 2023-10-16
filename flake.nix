@@ -139,12 +139,26 @@
           groups."ahbk-api".gid = users."ahbk-api".uid;
         };
 
+        services.postgresql = {
+          enable = true;
+          ensureDatabases = [ "ahbk" ];
+          ensureUsers = [
+            {
+              name = "ahbk-api";
+              ensurePermissions = {
+                "DATABASE ahbk" = "ALL PRIVILEGES";
+              };
+            }
+          ];
+        };
+
         systemd.services.ahbk-web = {
           description = "manage ahbk-web";
           serviceConfig = {
-            ExecStart = "source ${ahbk-env} && ${pkgs.nodejs_18}/bin/node ${ahbk-web}/build";
+            ExecStart = "${pkgs.nodejs_18}/bin/node ${ahbk-web}/build";
             User = "ahbk-web";
             Group = "ahbk-web";
+            EnvironmentFile="${ahbk-env}";
           };
           wantedBy = [ "multi-user.target" ];
         };
@@ -153,21 +167,22 @@
           description = "migrate ahbk-db";
           serviceConfig = {
             Type = "oneshot";
-            ExecStart = "source ${ahbk-env} && ${ahbk-api}/bin/migrate";
-            User = "ahbk-web";
-            Group = "ahbk-web";
+            ExecStart = "${ahbk-api}/bin/setup";
+            User = "ahbk-api";
+            Group = "ahbk-api";
+            EnvironmentFile="${ahbk-env}";
           };
           wantedBy = [ "multi-user.target" ];
-          requires = [ "ahbk-api" ];
-          before = [ "ahbk-api" ];
+          before = [ "ahbk-api.service" ];
         };
 
         systemd.services.ahbk-api = {
           description = "manage ahbk-api";
           serviceConfig = {
-            ExecStart = "source ${ahbk-env} && ${ahbk-api}/bin/uvicorn ahbk_api.main:app";
+            ExecStart = "${ahbk-api}/bin/uvicorn ahbk_api.main:app";
             User = "ahbk-api";
             Group = "ahbk-api";
+            EnvironmentFile="${ahbk-env}";
           };
           wantedBy = [ "multi-user.target" ];
         };
