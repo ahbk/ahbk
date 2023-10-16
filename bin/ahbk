@@ -4,16 +4,19 @@ if [ $# -ne 1 ]; then
     echo "Usage: $0 [web|api|setup]"
     exit 1
 fi
+set -a
+source @ahbk_env@
+set +a
 
 if [ "$1" = "web" ]; then
     echo "Starting ahbk-web..."
-    source @ahbk_env@ && @nodejs_18@/bin/node @ahbk_web@/build
+    @nodejs_18@/bin/node @ahbk_web@/build
 elif [ "$1" = "api" ]; then
     echo "Starting ahbk-api..."
-    source @ahbk_env@ && @ahbk_api@/bin/uvicorn ahbk_api.main:app
+    @ahbk_api@/bin/uvicorn ahbk_api.main:app
 elif [ "$1" = "setup" ]; then
-    echo "Migrating database..."
-    source @ahbk_env@ && @ahbk_api@/bin/setup
+    echo "Set up database..."
+    @ahbk_api@/bin/setup
 else
     echo "Invalid argument. Use 'web', 'api' or 'setup'."
     exit 1
