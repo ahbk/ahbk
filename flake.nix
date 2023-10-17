@@ -119,8 +119,9 @@
         services.nginx = {
           enable = true;
           virtualHosts."ahbk.ddns.net" = {
-            addSSL = true;
+            forceSSL = true;
             enableACME = true;
+
             locations = {
               "/" = {
                 recommendedProxySettings = true;
