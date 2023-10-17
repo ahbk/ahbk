@@ -16,7 +16,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, poetry2nix, agenix, ... }: 
+  outputs = { self, nixpkgs, poetry2nix, ... }: 
   let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -30,18 +30,18 @@
         src = "${self}/bin/ahbk";
         dir = "bin";
         isExecutable = true;
-        nodejs_18=pkgs.nodejs_18;
-        ahbk_web=ahbk-web;
-        ahbk_api=ahbk-api;
-        ahbk_env=ahbk-env;
+        nodejs_18 = pkgs.nodejs_18;
+        ahbk_web = ahbk-web;
+        ahbk_api = ahbk-api;
+        ahbk_env = ahbk-env;
       };
 
       ahbk-env = pkgs.substituteAll {
-        secret_key = "tba";
+        secret_key = "secret-key-test-env";
         src = "${self}/env/.env";
-        db_uri="postgresql+asyncpg://ahbk-api@/ahbk";
-        log_level="warning";
-        env="prod";
+        db_uri = "postgresql+asyncpg://ahbk-api@/ahbk";
+        log_level = "info";
+        env = "test";
         api_home="${ahbk-api}/";
       };
 
@@ -85,8 +85,18 @@
       cfg = config.ahbk;
       inherit (lib) mkOption types mkIf;
       inherit (self.packages.${system}) ahbk-bin ahbk-web ahbk-env ahbk-api;
-      ahbk-prod-env = ahbk-env.overrideAttrs{ secret_key = config.age.secrets."ahbk_secret_key".path; }; 
+      inherit (self.inputs) agenix;
+
+      ahbk-prod-env = ahbk-env.overrideAttrs{
+        secret_key = config.age.secrets."ahbk_secret_key".path;
+        env = "prod";
+        log_level = "error";
+      }; 
+
     in {
+      imports = [
+          agenix.nixosModules.default
+        ];
 
       options.ahbk = {
         enable = mkOption {
